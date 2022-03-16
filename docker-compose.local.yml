@@ -1,0 +1,60 @@
+version: '3.2'
+
+services:
+  web:
+    build:
+      context: src
+      dockerfile: ./Dockerfile
+    command: gunicorn src.wsgi:application --bind 0.0.0.0:8000
+
+    volumes:
+      - static_volume:/usr/src/app/staticfiles
+
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    environment: &env
+      SECRET_KEY: local
+      DEBUG: 1
+
+      DB_HOST: db
+      DB_NAME: project_name
+      DB_USER: project_name
+      DB_PASSWORD: project_name
+
+      CELERY_BROKER: redis://redis:6379
+
+      ALLOWED_HOSTS: *
+
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_USER: project_name
+      POSTGRES_DB: project_name
+      POSTGRES_PASSWORD: project_name
+
+  redis:
+    restart: on-failure
+    image: redis:6.0.10
+
+  celery:
+    restart: on-failure
+    build: src
+    command: celery -A src.celery worker -B -l INFO
+    volumes:
+      - static_volume:/usr/src/app/staticfiles
+    depends_on:
+      - redis
+      - db
+      - web
+    environment:
+      <<: *env
+
+
+
+volumes:
+  postgres_data:
+  static_volume:
