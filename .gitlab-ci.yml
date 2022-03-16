@@ -1,0 +1,54 @@
+image: docker:19.03.12
+
+services:
+  - docker:19.03.12-dind
+
+stages:
+  - lint
+  - test
+  - deploy
+
+static_lints:
+  stage: lint
+  image: 4heck/python-linters:latest
+  script:
+    - cd src && flake8 && black . --check
+
+pytest_and_coverage:
+  stage: test
+  image: tiangolo/docker-with-compose
+  before_script:
+    - docker-compose -f docker-compose.test.yml -p project_test up -d --build
+  script:
+    - docker exec -i project_test_web_1 coverage run -m pytest
+    - docker exec -i project_test_web_1 coverage report --rcfile=.coveragerc
+  after_script:
+    - docker-compose -f docker-compose.test.yml -p project_test down -v
+
+.base_deploy_staging: &base_deploy_staging
+  stage: deploy
+  image: tiangolo/docker-with-compose
+  script:
+    - docker-compose -f docker-compose.staging.yml -p project stop
+    - docker-compose -f docker-compose.staging.yml -p project rm -f
+    - docker-compose -f docker-compose.staging.yml -p project build
+    - docker-compose -f docker-compose.staging.yml -p project up -d --remove-orphans
+  environment:
+    name: Staging
+#    url: add url/ip address
+  tags:
+    - deploy
+    - staging
+
+
+deploy_staging_develop:
+  <<: *base_deploy_staging
+  only:
+    - dev
+
+deploy_staging:
+  <<: *base_deploy_staging
+  when: manual
+  except:
+    - master
+    - dev

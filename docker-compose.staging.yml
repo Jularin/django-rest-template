@@ -1,0 +1,76 @@
+version: '3.2'
+
+services:
+  web:
+    build: src
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/usr/src/app/staticfiles
+      - media_volume:/usr/src/app/mediafiles
+    depends_on:
+      - db
+      - redis
+    ports:
+      - ${DJANGO_PORT}:8000
+    environment: &env
+      DEBUG: 0
+      ENVIROMENT: staging
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DATABASE: postgres
+      CELERY_BROKER: redis://redis:6379
+      SECRET_KEY: ${SECRET_KEY}
+      DB_HOST: db # if change this variable to localhost django can't connect to postsgres container
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PORT: ${DB_PORT}
+
+
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+  redis:
+    restart: on-failure
+    image: redis:6.0.10
+
+  celery:
+    restart: on-failure
+    build: src
+    command: celery -A core.celery worker -B -l INFO
+    depends_on:
+      - redis
+      - db
+      - web
+    volumes:
+      - media_volume:/usr/src/app/mediafiles
+    environment:
+      <<: *env
+
+
+  nginx:
+    build: nginx/staging
+    restart: on-failure
+    volumes:
+      - static_volume:/usr/src/app/staticfiles
+      - media_volume:/usr/src/app/mediafiles
+      - ssl_data:/etc/resty-auto-ssl
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+  ssl_data:

@@ -21,3 +21,13 @@ poetry shell
 flake8
 black .
 ```
+
+
+## Run test in docker 
+```shell
+docker-compose -f docker-compose.test.yml -p project_test up -d --build
+docker exec -i project_test_web_1 coverage run -m pytest
+docker exec -i project_test_web_1 coverage report --rcfile=.coveragerc
+```
+
+## [Used styleguide](https://github.com/HackSoftware/Django-Styleguide#overview)
