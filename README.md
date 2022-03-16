@@ -1,4 +1,4 @@
-##Run your project locally with command:
+## Run your project locally with command:
 
 ```shell
 docker-compose -f docker-compose.local.yml up --build -d
@@ -10,13 +10,13 @@ docker-compose -f docker-compose.local.yml up --build -d
 pre-commit install 
 ```
 
-##Install dev dependencies with poetry
+## Install dev dependencies with poetry
 ```shell
 poetry install
 poetry shell
 ```
 
-##Run static linters
+## Run static linters
 ```shell
 flake8
 black .
